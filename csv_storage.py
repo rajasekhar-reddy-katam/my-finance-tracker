@@ -33,7 +33,11 @@ from typing import Dict, List, Optional, Any
 # ══════════════════════════════════════════════════════════════════════
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "data")
+
+# On Vercel / AWS Lambda, the root deployment directory is read-only.
+# Only /tmp is writable. Detect serverless environments automatically:
+IS_SERVERLESS = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+DATA_DIR = "/tmp/data" if IS_SERVERLESS else os.path.join(BASE_DIR, "data")
 
 USERS_FILE = os.path.join(DATA_DIR, "users.csv")
 TRANSACTIONS_FILE = os.path.join(DATA_DIR, "transactions.csv")
@@ -60,16 +64,37 @@ def init_storage(seed_demo: bool = True) -> None:
     Ensure the data/ directory and all 5 CSV files exist with appropriate headers.
     Optionally seeds demo data if the system is newly created.
     """
-    os.makedirs(DATA_DIR, exist_ok=True)
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except OSError:
+        pass
+
+    import shutil
+    source_dir = os.path.join(BASE_DIR, "data")
+    if IS_SERVERLESS and os.path.exists(source_dir):
+        for fname in os.listdir(source_dir):
+            src_f = os.path.join(source_dir, fname)
+            dst_f = os.path.join(DATA_DIR, fname)
+            if os.path.isfile(src_f) and not os.path.exists(dst_f):
+                try:
+                    shutil.copy2(src_f, dst_f)
+                except Exception:
+                    pass
 
     for filepath, header in SCHEMAS.items():
-        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
-            with open(filepath, mode="w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow(header)
+        try:
+            if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+                with open(filepath, mode="w", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(header)
+        except OSError:
+            pass
 
     if seed_demo:
-        seed_default_data()
+        try:
+            seed_default_data()
+        except Exception:
+            pass
 
 
 def read_csv(filepath: str) -> List[Dict[str, str]]:
@@ -682,4 +707,7 @@ def seed_default_data() -> None:
 
 
 # Automatically initialize on import
-init_storage(seed_demo=True)
+try:
+    init_storage(seed_demo=True)
+except Exception as e:
+    print(f"[CSV Storage] Initialization warning: {e}")

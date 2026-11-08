@@ -753,6 +753,9 @@ def server_error(e):
     return render_template("500.html"), 500
 
 
+# Vercel Serverless WSGI entry point
+handler = app
+
 # ══════════════════════════════════════════════════════════════════════
 # MAIN ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════
