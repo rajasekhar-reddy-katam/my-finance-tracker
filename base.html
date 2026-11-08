@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Aurora Finance{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2"/>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- ── Toast Notification Container ── -->
+  <div class="toast-container" id="toastContainer">
+    {# Render Flask flash messages as toasts #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="toast {{ 'success' if category == 'success' else 'error' if category == 'error' else 'info' }}">
+          <span class="toast-icon">
+            {{ '✅' if category == 'success' else '❌' if category == 'error' else 'ℹ️' }}
+          </span>
+          <span class="toast-msg">{{ message }}</span>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <!-- ── Mobile Sidebar Toggle Button ── -->
+  <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+  <div class="sidebar-overlay" onclick="toggleSidebar()"
+       style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99;display:none;"></div>
+
+  <div class="app-layout">
+
+    <!-- ══ SIDEBAR ══ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <div class="brand-icon">💎</div>
+          <div>
+            <div class="brand-name">Aurora Finance</div>
+            <div class="brand-sub">Personal Tracker</div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Main</div>
+
+        <a href="{{ url_for('dashboard') }}"
+           class="nav-link {{ 'active' if active_page == 'dashboard' }}">
+          <span class="nav-icon">📊</span> Dashboard
+        </a>
+
+        <a href="{{ url_for('income') }}"
+           class="nav-link {{ 'active' if active_page == 'income' }}">
+          <span class="nav-icon">💰</span> Income
+        </a>
+
+        <a href="{{ url_for('expense') }}"
+           class="nav-link {{ 'active' if active_page == 'expense' }}">
+          <span class="nav-icon">💸</span> Expenses
+        </a>
+
+        <div class="nav-section-label">Planning</div>
+
+        <a href="{{ url_for('budget') }}"
+           class="nav-link {{ 'active' if active_page == 'budget' }}">
+          <span class="nav-icon">🎯</span> Budget
+        </a>
+
+        <a href="{{ url_for('savings') }}"
+           class="nav-link {{ 'active' if active_page == 'savings' }}">
+          <span class="nav-icon">🏦</span> Savings Goals
+        </a>
+
+        <div class="nav-section-label">Analysis</div>
+
+        <a href="{{ url_for('transactions') }}"
+           class="nav-link {{ 'active' if active_page == 'transactions' }}">
+          <span class="nav-icon">📋</span> Transactions
+        </a>
+
+        <a href="{{ url_for('reports') }}"
+           class="nav-link {{ 'active' if active_page == 'reports' }}">
+          <span class="nav-icon">📈</span> Reports
+        </a>
+      </nav>
+
+      <!-- User info + logout -->
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">
+            {{ session.full_name[0].upper() if session.full_name else 'U' }}
+          </div>
+          <div>
+            <div class="user-name">{{ session.full_name or session.username }}</div>
+            <div class="user-role">@{{ session.username }}</div>
+          </div>
+        </div>
+        <a href="{{ url_for('logout') }}"
+           class="btn btn-secondary"
+           style="width:100%;font-size:0.82rem;padding:0.6rem;">
+          🚪 Logout
+        </a>
+      </div>
+    </aside>
+
+    <!-- ══ MAIN CONTENT ══ -->
+    <div class="main-content">
+
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h2>{% block page_title %}Dashboard{% endblock %}</h2>
+          <p>{% block page_subtitle %}{% endblock %}</p>
+        </div>
+        <div class="topbar-right">
+          <div class="topbar-date">
+            📅 <span id="topbarDate">Loading…</span>
+          </div>
+          {% block topbar_actions %}{% endblock %}
+        </div>
+      </header>
+
+      <!-- Page Body -->
+      <main class="page-body">
+        {% block content %}{% endblock %}
+      </main>
+
+    </div><!-- /main-content -->
+  </div><!-- /app-layout -->
+
+  {% block modals %}{% endblock %}
+
+  <!-- Chart.js CDN (loaded only on pages that need it) -->
+  {% block chartjs %}{% endblock %}
+
+  <script src="{{ url_for('static', filename='js/main.js') }}?v=2"></script>
+
+  <script>
+    // ── Mobile sidebar toggle ──
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      const ov = document.querySelector('.sidebar-overlay');
+      sb.classList.toggle('open');
+      ov.style.display = sb.classList.contains('open') ? 'block' : 'none';
+    }
+
+    // ── Auto-dismiss flash toasts after 4 seconds ──
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.toast').forEach(toast => {
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateX(60px)';
+          toast.style.transition = '0.3s';
+          setTimeout(() => toast.remove(), 300);
+        }, 4000);
+      });
+    });
+  </script>
+
+  {% block extra_scripts %}{% endblock %}
+
+</body>
+</html>

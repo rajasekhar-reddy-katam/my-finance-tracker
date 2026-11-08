@@ -1,0 +1,16 @@
+id,username,type,amount,category,description,date
+INC-105544FF,rajasekhar,income,60000.00,Salary,Monthly Salary,2026-11-01
+EXP-4CEDD5DA,rajasekhar,expense,3200.00,Food,Grocery shopping,2026-11-02
+INC-EAEBB96F,rajasekhar,income,12000.00,Freelance,Client Web App,2026-11-03
+EXP-EE9BFCD8,rajasekhar,expense,2100.00,Bills,Electricity bill,2026-11-04
+EXP-EE3A0E58,rajasekhar,expense,5800.00,Shopping,Online Shopping,2026-11-07
+EXP-A40024C6,rajasekhar,expense,2500.00,Transport,Fuel & Metro,2026-11-09
+INC-2DC6F37A,rajasekhar,income,7200.00,Investments,Stock Dividends,2026-11-10
+INC-1A2B1339,test_user_csv,income,15000.00,Salary,Bonus Payment,2026-11-05
+INC-77951C00,phase4_tester,income,85000.00,Salary,Tech Lead Monthly Compensation,2026-11-01
+INC-8EF6E4F9,fin_audit_user,income,100000.00,Salary,Primary Salary,2026-11-01
+EXP-9C016090,fin_audit_user,expense,5000.00,Transport,Fuel,2026-11-03
+EXP-83CC3FA0,fin_audit_user,expense,15000.00,Bills,Electricity & Net,2026-11-04
+INC-52755832,rajasekharkatam,income,50000.00,Salary,november salary,2026-11-05
+EXP-4FCABA6E,rajasekharkatam,expense,4500.00,Food,groceryand daily,2026-11-05
+EXP-7BD46F3E,rajasekharkatam,expense,4000.00,Bills,current and mmobille recharge,2026-11-05

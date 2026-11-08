@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Aurora Finance{% endblock %}
+{% block extra_head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Welcome, {{ session.full_name }}{% endblock %}
+
+{% block topbar_actions %}
+  <button class="btn btn-primary btn-sm" onclick="openModal('addTxModal')">➕ Add Transaction</button>
+{% endblock %}
+
+{% set active_page = 'dashboard' %}
+
+{% block content %}
+
+  <!-- Welcome Banner -->
+  <div class="welcome-banner">
+    <div>
+      <h2>Good day, {{ session.full_name }} 👋</h2>
+      <p>Here's your financial snapshot — updated in real time</p>
+    </div>
+    <div class="banner-actions">
+      <button class="btn btn-primary btn-sm" onclick="openModal('addTxModal')">➕ Add Transaction</button>
+      <a href="{{ url_for('reports') }}" class="btn btn-secondary btn-sm">📈 View Reports</a>
+    </div>
+  </div>
+
+  <!-- ── STAT CARDS ── -->
+  <div class="stat-cards">
+    <div class="stat-card income-card">
+      <div class="stat-card-top">
+        <span class="stat-label">Total Income</span>
+        <div class="stat-icon income-icon">💰</div>
+      </div>
+      <div class="stat-value income-val">{{ fmt_inr(totals.total_income) }}</div>
+      <div class="stat-change up">All recorded income</div>
+    </div>
+    <div class="stat-card expense-card">
+      <div class="stat-card-top">
+        <span class="stat-label">Total Expenses</span>
+        <div class="stat-icon expense-icon">💸</div>
+      </div>
+      <div class="stat-value expense-val">{{ fmt_inr(totals.total_expenses) }}</div>
+      <div class="stat-change down">All recorded expenses</div>
+    </div>
+    <div class="stat-card balance-card">
+      <div class="stat-card-top">
+        <span class="stat-label">Available Balance</span>
+        <div class="stat-icon balance-icon">🏧</div>
+      </div>
+      <div class="stat-value balance-val">{{ fmt_inr(totals.available) }}</div>
+      <div class="stat-change">Income − Expenses − Savings</div>
+    </div>
+    <div class="stat-card savings-card">
+      <div class="stat-card-top">
+        <span class="stat-label">Total Saved</span>
+        <div class="stat-icon savings-icon">🏦</div>
+      </div>
+      <div class="stat-value savings-val">{{ fmt_inr(totals.total_saved) }}</div>
+      <div class="stat-change up">Across all goals</div>
+    </div>
+  </div>
+
+  <!-- ── ROW 2: Monthly Chart + Expense Pie ── -->
+  <div class="grid-cols-6-4" style="margin-bottom:1.5rem;">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">📊 Monthly Overview</span>
+      </div>
+      {% if chart_labels %}
+        <div class="chart-container" style="height:260px;">
+          <canvas id="monthlyChart"></canvas>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <h3>No data yet</h3>
+          <p>Add income & expense transactions to see your chart.</p>
+          <button class="btn btn-primary btn-sm" style="margin-top:1rem;" onclick="openModal('addTxModal')">➕ Add First Transaction</button>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">🍕 Expense Breakdown</span>
+      </div>
+      {% if exp_cats %}
+        <div class="chart-container" style="height:200px;">
+          <canvas id="expensePieChart"></canvas>
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding:2rem 1rem;">
+          <div class="empty-icon">🍕</div>
+          <p>No expenses recorded yet.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── ROW 3: Recent Transactions + Quick Actions ── -->
+  <div class="grid-cols-6-4" style="margin-bottom:1.5rem;">
+
+    <!-- Recent Transactions -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">🕐 Recent Transactions</span>
+        <a href="{{ url_for('transactions') }}" class="btn btn-secondary btn-sm">View All</a>
+      </div>
+      {% if recent_tx %}
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Transaction</th><th>Category</th><th>Date</th><th>Amount</th></tr>
+            </thead>
+            <tbody>
+              {% for t in recent_tx %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-center gap-2">
+                      <div class="tx-icon {{ t.type }}">
+                        {{ '💰' if t.type == 'income' else '💸' }}
+                      </div>
+                      <div>
+                        <div style="font-weight:600;font-size:0.9rem;">{{ t.description }}</div>
+                        <div style="font-size:0.75rem;color:var(--muted);">{{ t.category }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge badge-{{ t.type }}">{{ t.type | capitalize }}</span>
+                  </td>
+                  <td style="color:var(--muted);font-size:0.85rem;">{{ t.date }}</td>
+                  <td class="text-{{ t.type }} fw-700">
+                    {{ '+' if t.type == 'income' else '−' }}{{ fmt_inr(t.amount) }}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <h3>No transactions yet</h3>
+          <p>Add your first transaction to get started.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Quick Actions + Budget Health -->
+    <div style="display:flex;flex-direction:column;gap:1.25rem;">
+      <div class="card">
+        <div class="card-header"><span class="card-title-lg">⚡ Quick Actions</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+          <a href="{{ url_for('income') }}" class="btn btn-secondary" style="flex-direction:column;padding:0.9rem;gap:0.3rem;text-align:center;">
+            <span style="font-size:1.3rem;">💰</span><span style="font-size:0.8rem;">Add Income</span>
+          </a>
+          <a href="{{ url_for('expense') }}" class="btn btn-secondary" style="flex-direction:column;padding:0.9rem;gap:0.3rem;text-align:center;">
+            <span style="font-size:1.3rem;">💸</span><span style="font-size:0.8rem;">Add Expense</span>
+          </a>
+          <a href="{{ url_for('budget') }}" class="btn btn-secondary" style="flex-direction:column;padding:0.9rem;gap:0.3rem;text-align:center;">
+            <span style="font-size:1.3rem;">🎯</span><span style="font-size:0.8rem;">Set Budget</span>
+          </a>
+          <a href="{{ url_for('savings') }}" class="btn btn-secondary" style="flex-direction:column;padding:0.9rem;gap:0.3rem;text-align:center;">
+            <span style="font-size:1.3rem;">🏦</span><span style="font-size:0.8rem;">Save Goal</span>
+          </a>
+        </div>
+      </div>
+
+      {% if budget_status %}
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title-lg">🎯 Budget Health</span>
+          <a href="{{ url_for('budget') }}" class="btn btn-secondary btn-sm">Manage</a>
+        </div>
+        {% for b in budget_status %}
+          <div class="budget-item">
+            <div class="budget-item-top">
+              <span class="budget-cat">{{ b.category }}</span>
+              <span class="budget-amounts">{{ fmt_inr(b.spent) }} / {{ fmt_inr(b.budget) }}</span>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill {{ 'progress-danger' if b.pct > 100 else 'progress-warn' if b.pct > 75 else 'progress-teal' }}"
+                   data-pct="{{ b.pct }}" style="width:0%;"></div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- ── Savings Goals Preview ── -->
+  {% if goals %}
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title-lg">🏦 Savings Goals</span>
+      <a href="{{ url_for('savings') }}" class="btn btn-secondary btn-sm">View All</a>
+    </div>
+    <div class="goal-grid">
+      {% for g in goals %}
+        {% set pct = (g.saved / g.target * 100) | round(1) if g.target > 0 else 0 %}
+        <div class="goal-card">
+          <div class="goal-name">{{ g.name }}</div>
+          <div class="goal-amounts">{{ fmt_inr(g.saved) }} of {{ fmt_inr(g.target) }}</div>
+          <div class="progress-bar-wrap" style="margin:0.6rem 0;">
+            <div class="progress-bar-fill progress-teal" data-pct="{{ pct }}" style="width:0%;"></div>
+          </div>
+          <div class="goal-pct">{{ pct }}% complete</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+{% endblock %}
+
+{% block modals %}
+<!-- Add Transaction Modal -->
+<div class="modal-overlay" id="addTxModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">➕ Add Transaction</span>
+      <button class="modal-close" onclick="closeModal('addTxModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form method="POST" action="{{ url_for('income') }}" id="quickTxForm">
+        <div class="type-selector">
+          <button type="button" class="type-btn income-btn selected"
+                  onclick="setQuickForm(this, 'income', '{{ url_for('income') }}')">💰 Income</button>
+          <button type="button" class="type-btn expense-btn"
+                  onclick="setQuickForm(this, 'expense', '{{ url_for('expense') }}')">💸 Expense</button>
+        </div>
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <div class="input-wrap"><span class="input-icon">₹</span>
+            <input type="number" name="amount" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category</label>
+            <select name="category" class="form-control" style="padding-left:1rem;" required>
+              <option value="">Select…</option>
+              <option>Salary</option><option>Freelance</option><option>Business</option>
+              <option>Food</option><option>Transport</option><option>Shopping</option>
+              <option>Bills</option><option>Health</option><option>Entertainment</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" name="date" class="form-control no-icon" required
+                   value="{{ today().isoformat() }}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <div class="input-wrap"><span class="input-icon">📝</span>
+            <input type="text" name="description" class="form-control" placeholder="Brief description…" required>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('addTxModal')">Cancel</button>
+      <button class="btn btn-primary" style="width:auto;" onclick="document.getElementById('quickTxForm').submit()">Save</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function setQuickForm(btn, type, action) {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('quickTxForm').action = action;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Monthly Line Chart
+    {% if chart_labels %}
+    new Chart(document.getElementById('monthlyChart'), {
+      type: 'line',
+      data: {
+        labels: {{ chart_labels | tojson }},
+        datasets: [
+          { label:'Income',   data: {{ chart_income | tojson }},
+            borderColor:'#10B981', backgroundColor:'rgba(16,185,129,0.12)',
+            fill:true, tension:0.45, pointBackgroundColor:'#10B981',
+            pointBorderColor:'#0B1020', pointBorderWidth:2, pointRadius:5 },
+          { label:'Expenses', data: {{ chart_expenses | tojson }},
+            borderColor:'#F87171', backgroundColor:'rgba(248,113,113,0.08)',
+            fill:true, tension:0.45, pointBackgroundColor:'#F87171',
+            pointBorderColor:'#0B1020', pointBorderWidth:2, pointRadius:5 }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:true,
+        interaction:{mode:'index',intersect:false},
+        plugins:{ legend:{position:'top',align:'end'},
+          tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ₹${c.parsed.y.toLocaleString('en-IN')}`}} },
+        scales:{
+          x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#94A3B8'}},
+          y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#94A3B8',callback:v=>'₹'+(v/1000).toFixed(0)+'k'}}
+        }
+      }
+    });
+    {% endif %}
+
+    // Expense Pie Chart
+    {% if exp_cats %}
+    const expLabels = {{ exp_cats.keys() | list | tojson }};
+    const expValues = {{ exp_cats.values() | list | tojson }};
+    new Chart(document.getElementById('expensePieChart'), {
+      type:'doughnut',
+      data:{
+        labels: expLabels,
+        datasets:[{ data:expValues,
+          backgroundColor:['#14B8A6','#8B5CF6','#60A5FA','#F87171','#10B981','#F59E0B','#2DD4BF'],
+          borderColor:'#17213B', borderWidth:3, hoverOffset:10 }]
+      },
+      options:{responsive:true, cutout:'68%',
+        plugins:{legend:{position:'right'},
+          tooltip:{callbacks:{label:c=>` ${c.label}: ₹${c.parsed.toLocaleString('en-IN')}`}}}
+      }
+    });
+    {% endif %}
+  });
+</script>
+{% endblock %}
