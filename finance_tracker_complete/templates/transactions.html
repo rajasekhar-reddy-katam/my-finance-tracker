@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Transactions — Aurora Finance{% endblock %}
+
+{% set active_page = 'transactions' %}
+
+{% block page_title %}Transaction History{% endblock %}
+{% block page_subtitle %}Search, filter, and audit every financial transaction{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{{ url_for('income') }}" class="btn btn-primary btn-sm">➕ Add Income</a>
+  <a href="{{ url_for('expense') }}" class="btn btn-danger btn-sm" style="background:rgba(248,113,113,0.2);border:1px solid rgba(248,113,113,0.4);color:var(--expense);">➕ Add Expense</a>
+{% endblock %}
+
+{% block content %}
+
+  <!-- Mini stats -->
+  <div class="mini-stats">
+    <div class="mini-stat">
+      <div class="ml">Total Records</div>
+      <div class="mv text-blue">{{ transactions|length }}</div>
+    </div>
+    <div class="mini-stat">
+      <div class="ml">Income Entries</div>
+      <div class="mv text-income">{{ income_count }}</div>
+    </div>
+    <div class="mini-stat">
+      <div class="ml">Expense Entries</div>
+      <div class="mv text-expense">{{ expense_count }}</div>
+    </div>
+    <div class="mini-stat">
+      <div class="ml">Savings Goals</div>
+      <div class="mv text-savings">{{ savings_count }}</div>
+    </div>
+  </div>
+
+  <!-- Search & Filters -->
+  <div class="card">
+    <form method="GET" action="{{ url_for('transactions') }}" class="search-bar" style="margin-bottom:0;">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" name="search" value="{{ search or '' }}" placeholder="Search description or category…" autofocus>
+      </div>
+      <select name="type" class="filter-select" onchange="this.form.submit()">
+        <option value="">All Types</option>
+        <option value="income" {{ 'selected' if tx_type == 'income' }}>Income Only</option>
+        <option value="expense" {{ 'selected' if tx_type == 'expense' }}>Expenses Only</option>
+      </select>
+      <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+      {% if search or tx_type %}
+        <a href="{{ url_for('transactions') }}" class="btn btn-secondary btn-sm">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <!-- Full Transaction Table -->
+  <div class="card" style="margin-top:1.25rem;">
+    <div class="card-header">
+      <span class="card-title-lg">📋 Transactions</span>
+      <span style="font-size:0.85rem;color:var(--muted);">Showing {{ transactions|length }} results</span>
+    </div>
+
+    {% if transactions %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>Category</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in transactions %}
+              <tr class="tx-row" data-type="{{ t.type }}">
+                <td style="color:var(--muted);font-size:0.82rem;">#{{ t.id }}</td>
+                <td>
+                  <div class="d-flex align-center gap-2">
+                    <div class="tx-icon {{ t.type }}">
+                      {{ '💰' if t.type == 'income' else '🛒' }}
+                    </div>
+                    <div>
+                      <div style="font-weight:600;font-size:0.9rem;">{{ t.description }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge badge-{{ t.type }}">{{ t.type | capitalize }}</span>
+                </td>
+                <td style="color:var(--muted);font-size:0.85rem;">{{ t.category }}</td>
+                <td style="color:var(--muted);font-size:0.85rem;">{{ t.date }}</td>
+                <td class="text-{{ t.type }} fw-700">
+                  {{ '+' if t.type == 'income' else '−' }}{{ fmt_inr(t.amount) }}
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <button class="btn btn-icon" title="Edit Transaction"
+                            onclick="openEditModal('{{ t.id }}', '{{ t.type }}', '{{ t.amount }}', '{{ t.category }}', '{{ t.description }}', '{{ t.date }}')">
+                      ✏️
+                    </button>
+                    <form method="POST" action="{{ url_for('delete_transaction', tx_id=t.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete transaction #{{ t.id }}?');">
+                      <button type="submit" class="btn btn-icon btn-danger" title="Delete">🗑️</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>No transactions found</h3>
+        <p>No transactions match your search criteria.</p>
+        <div style="margin-top:1rem;display:flex;gap:0.75rem;justify-content:center;">
+          <a href="{{ url_for('income') }}" class="btn btn-primary btn-sm">➕ Add Income</a>
+          <a href="{{ url_for('expense') }}" class="btn btn-danger btn-sm">➕ Add Expense</a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Edit Transaction Modal -->
+<div class="modal-overlay" id="editTxModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Edit Transaction</span>
+      <button class="modal-close" onclick="closeModal('editTxModal')">✕</button>
+    </div>
+    <form method="POST" action="" id="editTxForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Transaction Type</label>
+          <select name="type" id="editTxType" class="form-control" style="padding-left:1rem;" required>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <div class="input-wrap">
+            <span class="input-icon">₹</span>
+            <input type="number" name="amount" id="editTxAmount" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category</label>
+            <input type="text" name="category" id="editTxCategory" class="form-control no-icon" required>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" name="date" id="editTxDate" class="form-control no-icon" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <div class="input-wrap">
+            <span class="input-icon">📝</span>
+            <input type="text" name="description" id="editTxDesc" class="form-control" required>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('editTxModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="width:auto;">💾 Update Transaction</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function openEditModal(id, type, amount, category, desc, date) {
+    document.getElementById('editTxForm').action = "/edit_transaction/" + id;
+    document.getElementById('editTxType').value = type;
+    document.getElementById('editTxAmount').value = amount;
+    document.getElementById('editTxCategory').value = category;
+    document.getElementById('editTxDesc').value = desc;
+    document.getElementById('editTxDate').value = date;
+    openModal('editTxModal');
+  }
+</script>
+{% endblock %}

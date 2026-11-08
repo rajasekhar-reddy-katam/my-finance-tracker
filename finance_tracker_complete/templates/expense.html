@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}Expenses — Aurora Finance{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% set active_page = 'expense' %}
+
+{% block page_title %}Expenses{% endblock %}
+{% block page_subtitle %}Monitor your spending and identify cost drivers{% endblock %}
+
+{% block topbar_actions %}
+  <button class="btn btn-danger btn-sm" onclick="openModal('addExpenseModal')" style="background:rgba(248,113,113,0.2);border:1px solid rgba(248,113,113,0.4);color:var(--expense);">
+    ➕ Add Expense
+  </button>
+{% endblock %}
+
+{% block content %}
+
+  <!-- Stat Cards -->
+  <div class="stat-cards">
+    <div class="stat-card expense-card">
+      <div class="stat-card-top">
+        <span class="stat-label">Total Expenses</span>
+        <div class="stat-icon expense-icon">💸</div>
+      </div>
+      <div class="stat-value expense-val">{{ fmt_inr(total_expenses) }}</div>
+      <div class="stat-change down">All-time spending</div>
+    </div>
+    <div class="stat-card expense-card">
+      <div class="stat-card-top">
+        <span class="stat-label">Transactions</span>
+        <div class="stat-icon expense-icon">🧾</div>
+      </div>
+      <div class="stat-value expense-val">{{ expense_rows|length }}</div>
+      <div class="stat-change down">Total items logged</div>
+    </div>
+    <div class="stat-card balance-card">
+      <div class="stat-card-top">
+        <span class="stat-label">Categories</span>
+        <div class="stat-icon balance-icon">🏷️</div>
+      </div>
+      <div class="stat-value balance-val">{{ expense_cats|length }}</div>
+      <div class="stat-change">Active spending areas</div>
+    </div>
+  </div>
+
+  <!-- Chart Row -->
+  <div class="grid-cols-6-4" style="margin-bottom:1.5rem;">
+    <!-- Monthly Expense Trend -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">📉 Monthly Expense Trend</span>
+      </div>
+      {% if monthly %}
+        <div class="chart-container" style="height:260px;">
+          <canvas id="expenseTrendChart"></canvas>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">📉</div>
+          <p>No monthly expense data yet.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Category Doughnut -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">🍕 By Category</span>
+      </div>
+      {% if expense_cats %}
+        <div class="chart-container" style="height:200px;">
+          <canvas id="expensePieChart"></canvas>
+        </div>
+        <div class="divider" style="margin:0.75rem 0;"></div>
+        <div class="legend-list">
+          {% for cat, amt in expense_cats.items() %}
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#F87171;"></div>
+              <span class="legend-label">{{ cat }}</span>
+              <span class="legend-pct">{{ fmt_inr(amt) }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding:2rem 1rem;">
+          <div class="empty-icon">🍕</div>
+          <p>No expense categories recorded yet.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Expense Table -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title-lg">💸 Expense Records</span>
+      <button class="btn btn-danger btn-sm" onclick="openModal('addExpenseModal')" style="background:rgba(248,113,113,0.2);border:1px solid rgba(248,113,113,0.4);color:var(--expense);">
+        ➕ Add Expense
+      </button>
+    </div>
+
+    {% if expense_rows %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in expense_rows %}
+              <tr class="tx-row">
+                <td style="color:var(--muted);font-size:0.82rem;">#{{ row.id }}</td>
+                <td>
+                  <div class="d-flex align-center gap-2">
+                    <div class="tx-icon expense">🛒</div>
+                    <div>
+                      <div style="font-weight:600;">{{ row.description }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="badge badge-expense">{{ row.category }}</span></td>
+                <td style="color:var(--muted);font-size:0.85rem;">{{ row.date }}</td>
+                <td class="text-expense fw-700">−{{ fmt_inr(row.amount) }}</td>
+                <td>
+                  <form method="POST" action="{{ url_for('delete_transaction', tx_id=row.id) }}" style="display:inline;" onsubmit="return confirm('Delete this expense?');">
+                    <button type="submit" class="btn btn-icon btn-danger" title="Delete">🗑️</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">💸</div>
+        <h3>No expenses recorded yet</h3>
+        <p>Keep track of food, utilities, shopping, and more by recording your expenses.</p>
+        <button class="btn btn-primary btn-sm" style="margin-top:1rem;" onclick="openModal('addExpenseModal')">
+          ➕ Add Expense
+        </button>
+      </div>
+    {% endif %}
+  </div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Add Expense Modal -->
+<div class="modal-overlay" id="addExpenseModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">💸 Add Expense</span>
+      <button class="modal-close" onclick="closeModal('addExpenseModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('expense') }}" id="addExpenseForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <div class="input-wrap">
+            <span class="input-icon">₹</span>
+            <input type="number" name="amount" class="form-control" placeholder="0.00" step="0.01" min="0.01" required autofocus>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category</label>
+            <select name="category" class="form-control" style="padding-left:1rem;" required>
+              <option value="">Select category</option>
+              <option value="Food">Food</option>
+              <option value="Transport">Transport</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Bills">Bills</option>
+              <option value="Health">Health</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Education">Education</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" name="date" class="form-control no-icon" value="{{ today().isoformat() }}" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <div class="input-wrap">
+            <span class="input-icon">📝</span>
+            <input type="text" name="description" class="form-control" placeholder="e.g. Grocery shopping" required>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addExpenseModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="width:auto;background:linear-gradient(135deg,#F87171,#ef4444);">
+          💸 Save Expense
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    {% if monthly %}
+    const lineCtx = document.getElementById('expenseTrendChart');
+    if (lineCtx) {
+      new Chart(lineCtx, {
+        type: 'line',
+        data: {
+          labels: {{ monthly | map(attribute='month') | list | tojson }},
+          datasets: [{
+            label: 'Expenses (₹)',
+            data: {{ monthly | map(attribute='expenses') | list | tojson }},
+            borderColor: '#F87171',
+            backgroundColor: 'rgba(248,113,113,0.1)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#F87171',
+            pointBorderColor: '#0B1020',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: { label: c => ` ₹${c.parsed.y.toLocaleString('en-IN')}` }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#94A3B8' } },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#94A3B8', callback: v => '₹' + (v/1000).toFixed(0) + 'k' }
+            }
+          }
+        }
+      });
+    }
+    {% endif %}
+
+    {% if expense_cats %}
+    const pieCtx = document.getElementById('expensePieChart');
+    if (pieCtx) {
+      new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+          labels: {{ expense_cats.keys() | list | tojson }},
+          datasets: [{
+            data: {{ expense_cats.values() | list | tojson }},
+            backgroundColor: ['#14B8A6','#8B5CF6','#60A5FA','#F87171','#10B981','#F59E0B','#2DD4BF'],
+            borderColor: '#17213B',
+            borderWidth: 3,
+            hoverOffset: 8,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: { position: 'right' },
+            tooltip: {
+              callbacks: { label: c => ` ${c.label}: ₹${c.parsed.toLocaleString('en-IN')}` }
+            }
+          }
+        }
+      });
+    }
+    {% endif %}
+  });
+</script>
+{% endblock %}

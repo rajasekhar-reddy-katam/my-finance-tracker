@@ -1,0 +1,48 @@
+<!-- ═══════════════════════════════════════════════════════════
+     Shared sidebar partial — included by reference in comments
+     Paste this block inside every app page's <body>
+═══════════════════════════════════════════════════════════ -->
+<!--
+SIDEBAR SNIPPET (copy into every app page):
+
+<button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+<div class="sidebar-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99;display:none;"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-brand">
+      <div class="brand-icon">💎</div>
+      <div>
+        <div class="brand-name">Aurora Finance</div>
+        <div class="brand-sub">Personal Tracker</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Main</div>
+    <a href="dashboard.html"    class="nav-link [active if dashboard]"><span class="nav-icon">📊</span> Dashboard</a>
+    <a href="income.html"       class="nav-link [active if income]">  <span class="nav-icon">💰</span> Income</a>
+    <a href="expense.html"      class="nav-link [active if expense]"> <span class="nav-icon">💸</span> Expenses</a>
+
+    <div class="nav-section-label">Planning</div>
+    <a href="budget.html"       class="nav-link [active if budget]">  <span class="nav-icon">🎯</span> Budget</a>
+    <a href="savings.html"      class="nav-link [active if savings]"> <span class="nav-icon">🏦</span> Savings</a>
+
+    <div class="nav-section-label">Analysis</div>
+    <a href="transactions.html" class="nav-link [active if txns]">    <span class="nav-icon">📋</span> Transactions</a>
+    <a href="reports.html"      class="nav-link [active if reports]"> <span class="nav-icon">📈</span> Reports</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar">RS</div>
+      <div>
+        <div class="user-name">Raja Sekhar</div>
+        <div class="user-role">Premium User</div>
+      </div>
+    </div>
+    <a href="login.html" class="btn btn-secondary" style="width:100%;font-size:0.82rem;">🚪 Logout</a>
+  </div>
+</aside>
+-->

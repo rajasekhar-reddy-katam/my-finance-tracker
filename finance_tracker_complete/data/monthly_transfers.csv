@@ -1,0 +1,12 @@
+transfer_id,username,goal_key,goal_name,amount,date
+TRF-3B87CD8D,rajasekhar,GOAL-6A38D27D,Emergency Fund,30000.00,2026-11-05
+TRF-FF882E33,rajasekhar,GOAL-3B924469,Vacation — Goa,18000.00,2026-11-05
+TRF-71BB321E,rajasekhar,GOAL-91A10762,New Laptop,45000.00,2026-11-05
+TRF-E61D337A,test_user_csv,GOAL-C5F2B0E5,New Car,50000.00,2026-11-05
+TRF-A0472D91,test_user_csv,GOAL-C5F2B0E5,New Car,25000.00,2026-11-05
+TRF-1B22BA0C,phase4_tester,GOAL-F87165AF,Emergency Cushion,10000.00,2026-11-05
+TRF-1735F687,phase4_tester,GOAL-F87165AF,Emergency Cushion,5000.00,2026-11-05
+TRF-97A3F97B,fin_audit_user,GOAL-10332F40,Emergency Reserve,20000.00,2026-11-05
+TRF-21660846,fin_audit_user,GOAL-10332F40,Emergency Reserve,10000.00,2026-11-05
+TRF-D7889637,fin_audit_user,GOAL-10332F40,Emergency Reserve,-5000.00,2026-11-05
+TRF-A8172A29,rajasekharkatam,GOAL-31C987F5,laptop,10000.00,2026-11-05

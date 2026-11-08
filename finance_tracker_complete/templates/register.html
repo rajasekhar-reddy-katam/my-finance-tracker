@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register — Aurora Finance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body class="auth-page">
+
+  <div class="toast-container" id="toastContainer">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="toast {{ 'success' if category == 'success' else 'error' if category == 'error' else 'info' }}">
+          <span class="toast-icon">{{ '✅' if category == 'success' else '❌' if category == 'error' else 'ℹ️' }}</span>
+          <span class="toast-msg">{{ message }}</span>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <div class="auth-container" style="max-width:500px;">
+    <div class="auth-brand">
+      <div class="brand-logo">💎</div>
+      <h1 class="gradient-text">Aurora Finance</h1>
+      <p>Start your financial journey today</p>
+    </div>
+
+    <div class="auth-card">
+      <h2>Create Account</h2>
+      <p>Fill in the details below to get started</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          {% if category == 'error' %}
+            <div class="alert alert-danger" style="margin-top:0.5rem;">❌ {{ message }}</div>
+          {% endif %}
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('register') }}" autocomplete="off" novalidate
+            style="margin-top:1.5rem;">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <div class="input-wrap">
+              <span class="input-icon">👤</span>
+              <input type="text" id="full_name" name="full_name" class="form-control"
+                     placeholder="Raja Sekhar" value="{{ full_name or '' }}" required autofocus/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="username">Username</label>
+            <div class="input-wrap">
+              <span class="input-icon">🏷️</span>
+              <input type="text" id="username" name="username" class="form-control"
+                     placeholder="rajasekhar" value="{{ username or '' }}" required/>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon">📧</span>
+            <input type="email" id="email" name="email" class="form-control"
+                   placeholder="you@example.com" value="{{ email or '' }}" required/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="password" name="password" class="form-control"
+                   placeholder="Min 8 characters" required/>
+            <button type="button" class="toggle-password" title="Toggle">👁️</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm_password">Confirm Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔑</span>
+            <input type="password" id="confirm_password" name="confirm_password"
+                   class="form-control" placeholder="Re-enter password" required/>
+            <button type="button" class="toggle-password" title="Toggle">👁️</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top:0.5rem;">
+          ✨ Create My Account
+        </button>
+      </form>
+    </div>
+
+    <div class="auth-footer">
+      Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.toast').forEach(t => {
+        setTimeout(() => { t.style.opacity='0'; t.style.transition='0.3s'; setTimeout(()=>t.remove(),300); }, 4000);
+      });
+    });
+  </script>
+</body>
+</html>
