@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}Reports — Aurora Finance{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% set active_page = 'reports' %}
+
+{% block page_title %}Financial Reports{% endblock %}
+{% block page_subtitle %}Comprehensive analytics, savings rates, and cash flow trends{% endblock %}
+
+{% block topbar_actions %}
+  <button class="btn btn-secondary btn-sm" onclick="window.print()">
+    🖨️ Print Report
+  </button>
+{% endblock %}
+
+{% block content %}
+
+  <!-- Annual Summary -->
+  <div class="welcome-banner" style="margin-bottom:1.5rem;">
+    <div>
+      <h2>📊 Financial Performance Summary</h2>
+      <p>Calculated across all logged transactions for {{ session.full_name }}</p>
+    </div>
+    <div class="d-flex gap-2" style="flex-wrap:wrap;">
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Total Income</div>
+        <div style="font-size:1.3rem;font-weight:700;color:var(--income);">{{ fmt_inr(annual_income) }}</div>
+      </div>
+      <div style="width:1px;background:var(--border);"></div>
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Total Expenses</div>
+        <div style="font-size:1.3rem;font-weight:700;color:var(--expense);">{{ fmt_inr(annual_expenses) }}</div>
+      </div>
+      <div style="width:1px;background:var(--border);"></div>
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Net Balance</div>
+        <div style="font-size:1.3rem;font-weight:700;color:var(--blue);">{{ fmt_inr(annual_net) }}</div>
+      </div>
+      <div style="width:1px;background:var(--border);"></div>
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Savings Rate</div>
+        <div style="font-size:1.3rem;font-weight:700;color:var(--purple);">{{ savings_rate }}%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly Cash Flow Bar Chart -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header">
+      <span class="card-title-lg">📊 Monthly Cash Flow (Income vs Expenses)</span>
+      <div class="d-flex gap-1">
+        <span class="badge badge-income">Income</span>
+        <span class="badge badge-expense">Expenses</span>
+      </div>
+    </div>
+    {% if chart_labels %}
+      <div class="chart-container" style="height:300px;">
+        <canvas id="cashFlowChart"></canvas>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <p>No transaction history recorded yet to build cash flow graphs.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Two Column: Pie charts -->
+  <div class="grid-2" style="margin-bottom:1.5rem;">
+    <!-- Income by source -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">💰 Income by Source</span>
+      </div>
+      {% if inc_cats %}
+        <div class="chart-container" style="height:220px;">
+          <canvas id="incomePieChart"></canvas>
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding:2rem;">
+          <p>No income records yet.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Expense by category -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">💸 Expenses by Category</span>
+      </div>
+      {% if exp_cats %}
+        <div class="chart-container" style="height:220px;">
+          <canvas id="expensePieChart"></canvas>
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding:2rem;">
+          <p>No expense records yet.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Month-by-Month Table -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title-lg">📋 Month-by-Month Breakdown</span>
+    </div>
+    {% if monthly %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Income</th>
+              <th>Expenses</th>
+              <th>Net Savings</th>
+              <th>Savings Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in monthly %}
+              {% set m_rate = (m.net / m.income * 100)|round(1) if m.income > 0 else 0 %}
+              <tr>
+                <td style="font-weight:600;">{{ m.month }}</td>
+                <td class="text-income">{{ fmt_inr(m.income) }}</td>
+                <td class="text-expense">{{ fmt_inr(m.expenses) }}</td>
+                <td class="{{ 'text-income' if m.net >= 0 else 'text-expense' }} fw-700">
+                  {{ fmt_inr(m.net) }}
+                </td>
+                <td>
+                  <span class="badge {{ 'badge-income' if m_rate >= 20 else 'badge-expense' if m_rate < 0 else 'badge-blue' }}">
+                    {{ m_rate }}%
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+            <tr style="border-top:2px solid var(--border);font-weight:700;">
+              <td>Total</td>
+              <td class="text-income">{{ fmt_inr(annual_income) }}</td>
+              <td class="text-expense">{{ fmt_inr(annual_expenses) }}</td>
+              <td class="text-blue fw-700">{{ fmt_inr(annual_net) }}</td>
+              <td><span class="badge badge-purple">{{ savings_rate }}% avg</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">📅</div>
+        <h3>No monthly reports yet</h3>
+        <p>Start recording income and expenses to populate your periodic analytics.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Financial Intelligence Insights -->
+  <div class="card" style="margin-top:1.5rem;background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(20,184,166,0.08));border-color:rgba(139,92,246,0.2);">
+    <div class="card-header">
+      <span class="card-title-lg">🧠 Financial Health Summary</span>
+    </div>
+    <div class="grid-3" style="gap:1rem;">
+      <div style="padding:1rem;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:10px;">
+        <div style="font-weight:700;font-size:0.9rem;color:var(--income);">Liquid Solvency</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-top:0.3rem;">
+          Available balance stands at {{ fmt_inr(totals.available) }} after safeguarding earmarked savings reserves.
+        </div>
+      </div>
+      <div style="padding:1rem;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:10px;">
+        <div style="font-weight:700;font-size:0.9rem;color:var(--blue);">Savings Discipline</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-top:0.3rem;">
+          {{ fmt_inr(totals.total_saved) }} is actively locked across {{ goals|length }} designated target milestones.
+        </div>
+      </div>
+      <div style="padding:1rem;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:10px;">
+        <div style="font-weight:700;font-size:0.9rem;color:var(--purple);">Savings Efficiency</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-top:0.3rem;">
+          Your current net savings rate is {{ savings_rate }}% (Benchmark target: 20%+).
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    {% if chart_labels %}
+    const cashCtx = document.getElementById('cashFlowChart');
+    if (cashCtx) {
+      new Chart(cashCtx, {
+        type: 'bar',
+        data: {
+          labels: {{ chart_labels | tojson }},
+          datasets: [
+            {
+              label: 'Income',
+              data: {{ chart_income | tojson }},
+              backgroundColor: 'rgba(16,185,129,0.75)',
+              borderRadius: 6,
+              borderSkipped: false,
+            },
+            {
+              label: 'Expenses',
+              data: {{ chart_expenses | tojson }},
+              backgroundColor: 'rgba(248,113,113,0.75)',
+              borderRadius: 6,
+              borderSkipped: false,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', align: 'end' },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.dataset.label}: ₹${ctx.parsed.y.toLocaleString('en-IN')}`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#94A3B8' } },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#94A3B8', callback: v => '₹' + (v/1000).toFixed(0) + 'k' }
+            }
+          }
+        }
+      });
+    }
+    {% endif %}
+
+    {% if inc_cats %}
+    const incCtx = document.getElementById('incomePieChart');
+    if (incCtx) {
+      new Chart(incCtx, {
+        type: 'doughnut',
+        data: {
+          labels: {{ inc_cats.keys() | list | tojson }},
+          datasets: [{
+            data: {{ inc_cats.values() | list | tojson }},
+            backgroundColor: ['#10B981','#14B8A6','#2DD4BF','#60A5FA','#8B5CF6'],
+            borderColor: '#17213B',
+            borderWidth: 3,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: { position: 'right' }
+          }
+        }
+      });
+    }
+    {% endif %}
+
+    {% if exp_cats %}
+    const expCtx = document.getElementById('expensePieChart');
+    if (expCtx) {
+      new Chart(expCtx, {
+        type: 'doughnut',
+        data: {
+          labels: {{ exp_cats.keys() | list | tojson }},
+          datasets: [{
+            data: {{ exp_cats.values() | list | tojson }},
+            backgroundColor: ['#14B8A6','#8B5CF6','#60A5FA','#F87171','#10B981','#F59E0B'],
+            borderColor: '#17213B',
+            borderWidth: 3,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: { position: 'right' }
+          }
+        }
+      });
+    }
+    {% endif %}
+  });
+</script>
+{% endblock %}

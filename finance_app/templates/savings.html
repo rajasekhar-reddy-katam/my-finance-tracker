@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block title %}Savings Goals — Aurora Finance{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% set active_page = 'savings' %}
+
+{% block page_title %}Savings Goals{% endblock %}
+{% block page_subtitle %}Targeted funds reserved separate from daily expenses{% endblock %}
+
+{% block topbar_actions %}
+  <button class="btn btn-primary btn-sm" onclick="openModal('addGoalModal')">
+    ➕ New Goal
+  </button>
+{% endblock %}
+
+{% block content %}
+
+  <!-- Mini stats -->
+  <div class="mini-stats">
+    <div class="mini-stat">
+      <div class="ml">Active Goals</div>
+      <div class="mv text-teal">{{ goals|length }} Goals</div>
+    </div>
+    <div class="mini-stat">
+      <div class="ml">Total Saved</div>
+      <div class="mv text-savings">{{ fmt_inr(totals.total_saved) }}</div>
+    </div>
+    <div class="mini-stat">
+      <div class="ml">Available Liquid</div>
+      <div class="mv text-blue">{{ fmt_inr(totals.available) }}</div>
+    </div>
+    <div class="mini-stat">
+      <div class="ml">Total Income</div>
+      <div class="mv text-income">{{ fmt_inr(totals.total_income) }}</div>
+    </div>
+  </div>
+
+  <!-- Savings Progress Chart -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header">
+      <span class="card-title-lg">📊 Goal Progress Overview</span>
+    </div>
+    {% if goals %}
+      <div class="chart-container" style="height:260px;">
+        <canvas id="savingsGoalChart"></canvas>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🏦</div>
+        <p>No savings goals set yet.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Goal Cards Grid -->
+  <div class="page-header" style="margin-bottom:1rem;">
+    <h3>🏦 My Savings Goals</h3>
+    <button class="btn btn-primary btn-sm" onclick="openModal('addGoalModal')">
+      ➕ Create New Goal
+    </button>
+  </div>
+
+  <div class="goal-grid">
+    {% for g in goals %}
+      <div class="goal-card">
+        <div class="d-flex justify-between align-center" style="margin-bottom:0.75rem;">
+          <div class="goal-emoji">🎯</div>
+          <div class="d-flex gap-1">
+            <button class="btn btn-icon btn-sm" onclick="openDepositModal('{{ g.id }}', '{{ g.name }}')" title="Deposit Funds">
+              💸
+            </button>
+            <form method="POST" action="{{ url_for('savings') }}" style="display:inline;" onsubmit="return confirm('Delete goal {{ g.name }}?');">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="goal_id" value="{{ g.id }}">
+              <button type="submit" class="btn btn-icon btn-sm btn-danger" title="Delete">🗑️</button>
+            </form>
+          </div>
+        </div>
+        <div class="goal-name">{{ g.name }}</div>
+        <div class="goal-amounts">{{ fmt_inr(g.saved) }} saved of {{ fmt_inr(g.target) }}</div>
+        <div class="progress-bar-wrap" style="margin:0.75rem 0;">
+          <div class="progress-bar-fill {{ 'progress-income' if g.pct >= 100 else 'progress-teal' }}"
+               data-pct="{{ g.pct }}" style="width:0%;"></div>
+        </div>
+        <div class="d-flex justify-between align-center">
+          <div class="goal-pct {{ 'text-income' if g.pct >= 100 else 'text-teal' }}">
+            {{ g.pct }}% complete {{ '🎉' if g.pct >= 100 else '' }}
+          </div>
+          <div style="font-size:0.8rem;color:var(--muted);">
+            {% if g.target > g.saved %}
+              {{ fmt_inr(g.target - g.saved) }} remaining
+            {% else %}
+              Target Reached!
+            {% endif %}
+          </div>
+        </div>
+        <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;">
+          <button class="btn btn-secondary btn-sm" style="flex:1;font-size:0.8rem;" onclick="openDepositModal('{{ g.id }}', '{{ g.name }}')">
+            ➕ Deposit
+          </button>
+          <button class="btn btn-secondary btn-sm" style="flex:1;font-size:0.8rem;color:var(--expense);" onclick="openWithdrawModal('{{ g.id }}', '{{ g.name }}', {{ g.saved }})">
+            🏧 Withdraw
+          </button>
+        </div>
+      </div>
+    {% else %}
+      <div class="goal-card" style="border-style:dashed;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:200px;cursor:pointer;" onclick="openModal('addGoalModal')">
+        <div style="font-size:2.5rem;margin-bottom:0.75rem;">➕</div>
+        <div style="font-weight:700;font-size:0.95rem;">Create Your First Goal</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-top:0.3rem;">Emergency Fund, Vacation, Gadgets…</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Financial Logic Rule Alert -->
+  <div class="alert alert-info" style="margin-top:1.5rem;">
+    ℹ️ <strong>Calculation Standard:</strong>
+    Available Balance = Total Income − Total Expenses − Net Savings Contributions.
+    Transfers to savings reduce available liquid funds without distorting expense reports.
+  </div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Add Goal Modal -->
+<div class="modal-overlay" id="addGoalModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🏦 Create Savings Goal</span>
+      <button class="modal-close" onclick="closeModal('addGoalModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('savings') }}" id="addGoalForm">
+      <input type="hidden" name="action" value="create">
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Goal Name</label>
+          <div class="input-wrap">
+            <span class="input-icon">🎯</span>
+            <input type="text" name="goal_name" class="form-control" placeholder="e.g. Emergency Fund" required autofocus>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Target Amount (₹)</label>
+          <div class="input-wrap">
+            <span class="input-icon">₹</span>
+            <input type="number" name="target" class="form-control" placeholder="50000" min="1" step="0.01" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Initial Saved Amount (₹) <span style="color:var(--muted);font-size:0.8rem;">(optional)</span></label>
+          <div class="input-wrap">
+            <span class="input-icon">💰</span>
+            <input type="number" name="initial" class="form-control" placeholder="0" min="0" step="0.01" value="0">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addGoalModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="width:auto;background:linear-gradient(135deg,var(--savings),var(--teal));">
+          🏦 Create Goal
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Deposit Modal -->
+<div class="modal-overlay" id="depositModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">💸 Deposit to Goal</span>
+      <button class="modal-close" onclick="closeModal('depositModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('savings') }}" id="depositForm">
+      <input type="hidden" name="action" value="deposit">
+      <input type="hidden" name="goal_id" id="depositGoalId" value="">
+      <div class="modal-body">
+        <div class="alert alert-info">
+          Transferring to: <strong id="depositGoalName" style="color:var(--text);">Goal</strong>
+        </div>
+        <div class="form-group" style="margin-top:1rem;">
+          <label>Amount to Deposit (₹)</label>
+          <div class="input-wrap">
+            <span class="input-icon">₹</span>
+            <input type="number" name="amount" id="depositAmount" class="form-control" placeholder="e.g. 5000" min="0.01" step="0.01" required autofocus>
+          </div>
+          <small>Available to transfer: {{ fmt_inr(totals.available) }}</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('depositModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="width:auto;background:linear-gradient(135deg,var(--savings),var(--teal));">
+          💸 Confirm Transfer
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Withdraw Modal -->
+<div class="modal-overlay" id="withdrawModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🏧 Withdraw from Goal</span>
+      <button class="modal-close" onclick="closeModal('withdrawModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('savings') }}" id="withdrawForm">
+      <input type="hidden" name="action" value="withdraw">
+      <input type="hidden" name="goal_id" id="withdrawGoalId" value="">
+      <div class="modal-body">
+        <div class="alert alert-info">
+          Withdrawing from: <strong id="withdrawGoalName" style="color:var(--text);">Goal</strong>
+        </div>
+        <p style="font-size:0.85rem;color:var(--muted);margin-top:0.5rem;">
+          ℹ️ Withdrawn funds are restored directly to your Available Liquid Balance. They are <strong>never</strong> counted as income.
+        </p>
+        <div class="form-group" style="margin-top:1rem;">
+          <label>Amount to Withdraw (₹)</label>
+          <div class="input-wrap">
+            <span class="input-icon">₹</span>
+            <input type="number" name="amount" id="withdrawAmount" class="form-control" placeholder="0.00" min="0.01" step="0.01" required autofocus>
+          </div>
+          <small>Maximum withdrawable: ₹<span id="withdrawMaxSaved">0.00</span></small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('withdrawModal')">Cancel</button>
+        <button type="submit" class="btn btn-danger" style="width:auto;">
+          🏧 Confirm Withdrawal
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function openDepositModal(goalId, goalName) {
+    document.getElementById('depositGoalId').value = goalId;
+    document.getElementById('depositGoalName').textContent = goalName;
+    openModal('depositModal');
+  }
+
+  function openWithdrawModal(goalId, goalName, maxSaved) {
+    document.getElementById('withdrawGoalId').value = goalId;
+    document.getElementById('withdrawGoalName').textContent = goalName;
+    document.getElementById('withdrawMaxSaved').textContent = Number(maxSaved).toLocaleString('en-IN', {minimumFractionDigits: 2});
+    document.getElementById('withdrawAmount').max = maxSaved;
+    openModal('withdrawModal');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    {% if goals %}
+    const ctx = document.getElementById('savingsGoalChart');
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: {{ goals | map(attribute='name') | list | tojson }},
+          datasets: [
+            {
+              label: 'Saved',
+              data: {{ goals | map(attribute='saved') | list | tojson }},
+              backgroundColor: 'rgba(20,184,166,0.8)',
+              borderRadius: 6,
+              borderSkipped: false,
+            },
+            {
+              label: 'Target',
+              data: {{ goals | map(attribute='target') | list | tojson }},
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              borderRadius: 6,
+              borderSkipped: false,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', align: 'end' },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.dataset.label}: ₹${ctx.parsed.y.toLocaleString('en-IN')}`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#94A3B8' } },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#94A3B8', callback: v => '₹' + (v/1000).toFixed(0) + 'k' }
+            }
+          }
+        }
+      });
+    }
+    {% endif %}
+
+    if (typeof animateProgressBars === 'function') {
+      animateProgressBars();
+    }
+  });
+</script>
+{% endblock %}

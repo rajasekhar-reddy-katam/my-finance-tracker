@@ -1,0 +1,6 @@
+username,full_name,email,password_hash,created_at
+rajasekhar,Raja Sekhar,rajasekhar@example.com,ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f,2026-11-05
+test_user_csv,Test User,test@example.com,dummy_hash_123,2026-11-05
+phase4_tester,Phase 4 User,p4@example.com,0de3f42a37488c7cdb1df0b9d807d563220a2b102c67ef92f616fd1689c85291,2026-11-05
+fin_audit_user,Audit Tester,audit@finance.org,dummy_hash_for_test,2026-11-05
+rajasekharkatam,rajasekharkatam,katamrajasekharreddy@gmail.com,c544bec59a2941cb955db1bdc45df74c4e1e51f0c4f1a7ee0b4d60320b68b0bb,2026-11-05

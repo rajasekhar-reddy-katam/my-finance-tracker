@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}Income — Aurora Finance{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% set active_page = 'income' %}
+
+{% block page_title %}Income{% endblock %}
+{% block page_subtitle %}Track and manage all your revenue streams{% endblock %}
+
+{% block topbar_actions %}
+  <button class="btn btn-primary btn-sm" onclick="openModal('addIncomeModal')">
+    ➕ Add Income
+  </button>
+{% endblock %}
+
+{% block content %}
+
+  <!-- Stat cards -->
+  <div class="stat-cards" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+    <div class="stat-card income-card">
+      <div class="stat-card-top">
+        <span class="stat-label">Total Income</span>
+        <div class="stat-icon income-icon">💰</div>
+      </div>
+      <div class="stat-value income-val">{{ fmt_inr(total_income) }}</div>
+      <div class="stat-change up">Across all time</div>
+    </div>
+    <div class="stat-card income-card">
+      <div class="stat-card-top">
+        <span class="stat-label">Total Entries</span>
+        <div class="stat-icon income-icon">🔢</div>
+      </div>
+      <div class="stat-value income-val">{{ income_rows|length }}</div>
+      <div class="stat-change up">Recorded transactions</div>
+    </div>
+    <div class="stat-card balance-card">
+      <div class="stat-card-top">
+        <span class="stat-label">Income Sources</span>
+        <div class="stat-icon balance-icon">📊</div>
+      </div>
+      <div class="stat-value balance-val">{{ income_cats|length }}</div>
+      <div class="stat-change">Active categories</div>
+    </div>
+  </div>
+
+  <!-- Chart Row -->
+  <div class="grid-cols-6-4" style="margin-bottom:1.5rem;">
+    <!-- Monthly Trend Bar Chart -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">📈 Income by Month</span>
+      </div>
+      {% if monthly %}
+        <div class="chart-container" style="height:260px;">
+          <canvas id="incomeBarChart"></canvas>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">📈</div>
+          <p>No monthly income trends to display yet.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Income Categories Pie Chart -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">🍰 By Category</span>
+      </div>
+      {% if income_cats %}
+        <div class="chart-container" style="height:200px;">
+          <canvas id="incomePieChart"></canvas>
+        </div>
+        <div class="divider" style="margin:0.75rem 0;"></div>
+        <div class="legend-list">
+          {% for cat, amt in income_cats.items() %}
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#10B981;"></div>
+              <span class="legend-label">{{ cat }}</span>
+              <span class="legend-pct">{{ fmt_inr(amt) }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding:2rem 1rem;">
+          <div class="empty-icon">🍰</div>
+          <p>No income categories yet.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Income Table -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title-lg">💰 Income Records</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal('addIncomeModal')">
+        ➕ Add New Income
+      </button>
+    </div>
+
+    {% if income_rows %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in income_rows %}
+              <tr class="tx-row">
+                <td style="color:var(--muted);font-size:0.82rem;">#{{ row.id }}</td>
+                <td>
+                  <div class="d-flex align-center gap-2">
+                    <div class="tx-icon income">💼</div>
+                    <div>
+                      <div style="font-weight:600;">{{ row.description }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="badge badge-income">{{ row.category }}</span></td>
+                <td style="color:var(--muted);font-size:0.85rem;">{{ row.date }}</td>
+                <td class="text-income fw-700">+{{ fmt_inr(row.amount) }}</td>
+                <td>
+                  <form method="POST" action="{{ url_for('delete_transaction', tx_id=row.id) }}" style="display:inline;" onsubmit="return confirm('Delete this income record?');">
+                    <button type="submit" class="btn btn-icon btn-danger" title="Delete">🗑️</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">💰</div>
+        <h3>No income recorded yet</h3>
+        <p>Click "Add Income" to record your salary, freelance earnings, or investments.</p>
+        <button class="btn btn-primary btn-sm" style="margin-top:1rem;" onclick="openModal('addIncomeModal')">
+          ➕ Add Income
+        </button>
+      </div>
+    {% endif %}
+  </div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Add Income Modal -->
+<div class="modal-overlay" id="addIncomeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">💰 Add Income</span>
+      <button class="modal-close" onclick="closeModal('addIncomeModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('income') }}" id="addIncomeForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <div class="input-wrap">
+            <span class="input-icon">₹</span>
+            <input type="number" name="amount" class="form-control" placeholder="0.00" step="0.01" min="0.01" required autofocus>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category / Source</label>
+            <select name="category" class="form-control" style="padding-left:1rem;" required>
+              <option value="">Select source</option>
+              <option value="Salary">Salary</option>
+              <option value="Freelance">Freelance</option>
+              <option value="Business">Business</option>
+              <option value="Investments">Investments</option>
+              <option value="Rental">Rental</option>
+              <option value="Gift">Gift</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" name="date" class="form-control no-icon" value="{{ today().isoformat() }}" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <div class="input-wrap">
+            <span class="input-icon">📝</span>
+            <input type="text" name="description" class="form-control" placeholder="e.g. November Salary" required>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addIncomeModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="width:auto;">💰 Save Income</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    {% if monthly %}
+    const barCtx = document.getElementById('incomeBarChart');
+    if (barCtx) {
+      new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: {{ monthly | map(attribute='month') | list | tojson }},
+          datasets: [{
+            label: 'Income (₹)',
+            data: {{ monthly | map(attribute='income') | list | tojson }},
+            backgroundColor: 'rgba(16,185,129,0.75)',
+            borderRadius: 7,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: { label: c => ` ₹${c.parsed.y.toLocaleString('en-IN')}` }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#94A3B8' } },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#94A3B8', callback: v => '₹' + (v/1000).toFixed(0) + 'k' }
+            }
+          }
+        }
+      });
+    }
+    {% endif %}
+
+    {% if income_cats %}
+    const pieCtx = document.getElementById('incomePieChart');
+    if (pieCtx) {
+      new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+          labels: {{ income_cats.keys() | list | tojson }},
+          datasets: [{
+            data: {{ income_cats.values() | list | tojson }},
+            backgroundColor: ['#10B981','#14B8A6','#2DD4BF','#60A5FA','#8B5CF6','#F59E0B'],
+            borderColor: '#17213B',
+            borderWidth: 3,
+            hoverOffset: 8,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: { position: 'right' },
+            tooltip: {
+              callbacks: { label: c => ` ${c.label}: ₹${c.parsed.toLocaleString('en-IN')}` }
+            }
+          }
+        }
+      });
+    }
+    {% endif %}
+  });
+</script>
+{% endblock %}

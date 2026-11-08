@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Budget — Aurora Finance{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% set active_page = 'budget' %}
+
+{% block page_title %}Budget Planner{% endblock %}
+{% block page_subtitle %}Set category limits and avoid overspending{% endblock %}
+
+{% block topbar_actions %}
+  <button class="btn btn-primary btn-sm" onclick="openModal('addBudgetModal')">
+    ➕ Set Budget
+  </button>
+{% endblock %}
+
+{% block content %}
+
+  <!-- Summary mini stats -->
+  <div class="mini-stats">
+    <div class="mini-stat">
+      <div class="ml">Total Budgeted</div>
+      <div class="mv text-blue">{{ fmt_inr(total_budgeted) }}</div>
+    </div>
+    <div class="mini-stat">
+      <div class="ml">Total Spent</div>
+      <div class="mv text-expense">{{ fmt_inr(total_spent) }}</div>
+    </div>
+    <div class="mini-stat">
+      <div class="ml">Remaining</div>
+      <div class="mv text-income">{{ fmt_inr(total_budgeted - total_spent) }}</div>
+    </div>
+    <div class="mini-stat">
+      <div class="ml">Over Budget</div>
+      <div class="mv text-expense">{{ over_budget|length }} categories</div>
+    </div>
+    <div class="mini-stat">
+      <div class="ml">On Track</div>
+      <div class="mv text-savings">{{ (budget_status|length) - (over_budget|length) }} categories</div>
+    </div>
+  </div>
+
+  <!-- Chart + Budget List -->
+  <div class="grid-cols-4-6" style="margin-bottom:1.5rem;">
+
+    <!-- Budget vs Spent Chart -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">📊 Budget vs Spent</span>
+      </div>
+      {% if budget_status %}
+        <div class="chart-container" style="height:320px;">
+          <canvas id="budgetChart"></canvas>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <p>No budgets configured yet to generate chart.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Budget Cards -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title-lg">🎯 Category Budgets</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('addBudgetModal')">
+          ➕ Set Budget
+        </button>
+      </div>
+
+      {% if budget_status %}
+        {% for b in budget_status %}
+          <div class="budget-item">
+            <div class="budget-item-top">
+              <div class="d-flex align-center gap-2">
+                <span class="budget-cat">{{ b.category }}</span>
+                {% if b.pct > 100 %}
+                  <span class="badge badge-expense" style="font-size:0.65rem;">Over Budget!</span>
+                {% endif %}
+              </div>
+              <div class="d-flex align-center gap-2">
+                <div>
+                  <span style="font-weight:700;color:{{ 'var(--expense)' if b.pct > 100 else 'var(--income)' }};">
+                    {{ fmt_inr(b.spent) }}
+                  </span>
+                  <span style="color:var(--muted);font-size:0.82rem;"> / {{ fmt_inr(b.budget) }}</span>
+                </div>
+                <!-- Delete budget button -->
+                <form method="POST" action="{{ url_for('budget') }}" style="display:inline;" onsubmit="return confirm('Remove budget for {{ b.category }}?');">
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="category" value="{{ b.category }}">
+                  <button type="submit" class="btn btn-icon btn-sm btn-danger" title="Remove budget">✕</button>
+                </form>
+              </div>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill {{ 'progress-danger' if b.pct > 100 else 'progress-warn' if b.pct > 75 else 'progress-teal' }}"
+                   data-pct="{{ b.pct }}" style="width:0%;"></div>
+            </div>
+            <div class="d-flex justify-between mt-1" style="font-size:0.78rem;">
+              <span style="color:var(--muted);">{{ b.pct }}% used</span>
+              {% if b.remaining >= 0 %}
+                <span class="text-income">{{ fmt_inr(b.remaining) }} left</span>
+              {% else %}
+                <span class="text-expense">{{ fmt_inr(-b.remaining) }} over limit!</span>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">🎯</div>
+          <h3>No category budgets set</h3>
+          <p>Set spending targets for Food, Shopping, Transport, and more.</p>
+          <button class="btn btn-primary btn-sm" style="margin-top:1rem;" onclick="openModal('addBudgetModal')">
+            ➕ Set Your First Budget
+          </button>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- Smart Tips -->
+  <div class="card" style="background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(20,184,166,0.08));border-color:rgba(139,92,246,0.2);">
+    <div class="card-header">
+      <span class="card-title-lg">💡 Budget Management Principles</span>
+    </div>
+    <div class="grid-3" style="gap:1rem;">
+      <div style="padding:1rem;background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.2);border-radius:10px;">
+        <div style="font-size:1.3rem;margin-bottom:0.5rem;">50/30/20 Rule</div>
+        <div style="font-size:0.82rem;color:var(--muted);">Allocate 50% of income to Needs, 30% to Wants, and 20% directly to Savings Goals.</div>
+      </div>
+      <div style="padding:1rem;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px;">
+        <div style="font-size:1.3rem;margin-bottom:0.5rem;">Early Alert System</div>
+        <div style="font-size:0.82rem;color:var(--muted);">When a category surpasses 75%, review pending discretionary expenses immediately.</div>
+      </div>
+      <div style="padding:1rem;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:10px;">
+        <div style="font-size:1.3rem;margin-bottom:0.5rem;">Dynamic Adjustments</div>
+        <div style="font-size:0.82rem;color:var(--muted);">Budgets can be updated any time without altering previous transaction histories.</div>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Add/Set Budget Modal -->
+<div class="modal-overlay" id="addBudgetModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🎯 Set Category Budget</span>
+      <button class="modal-close" onclick="closeModal('addBudgetModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('budget') }}" id="addBudgetForm">
+      <input type="hidden" name="action" value="set">
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category" class="form-control" style="padding-left:1rem;" required autofocus>
+            <option value="">Select category</option>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Bills">Bills</option>
+            <option value="Health">Health</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Education">Education</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Monthly Budget Limit (₹)</label>
+          <div class="input-wrap">
+            <span class="input-icon">₹</span>
+            <input type="number" name="amount" class="form-control" placeholder="e.g. 15000" min="1" step="1" required>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addBudgetModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="width:auto;">🎯 Save Budget</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    {% if budget_status %}
+    const ctx = document.getElementById('budgetChart');
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: {{ budget_status | map(attribute='category') | list | tojson }},
+          datasets: [
+            {
+              label: 'Budget',
+              data: {{ budget_status | map(attribute='budget') | list | tojson }},
+              backgroundColor: 'rgba(96,165,250,0.3)',
+              borderColor: 'rgba(96,165,250,0.8)',
+              borderWidth: 1,
+              borderRadius: 6,
+              borderSkipped: false,
+            },
+            {
+              label: 'Spent',
+              data: {{ budget_status | map(attribute='spent') | list | tojson }},
+              backgroundColor: 'rgba(248,113,113,0.8)',
+              borderRadius: 6,
+              borderSkipped: false,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { position: 'top', align: 'end' },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.dataset.label}: ₹${ctx.parsed.x.toLocaleString('en-IN')}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#94A3B8', callback: v => '₹' + (v/1000).toFixed(0) + 'k' }
+            },
+            y: { grid: { display: false }, ticks: { color: '#94A3B8' } }
+          }
+        }
+      });
+    }
+    {% endif %}
+
+    // Animate progress bars
+    if (typeof animateProgressBars === 'function') {
+      animateProgressBars();
+    }
+  });
+</script>
+{% endblock %}
